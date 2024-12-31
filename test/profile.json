@@ -1,0 +1,19 @@
+{
+    "avatar": "https://images.chesscomfiles.com/uploads/v1/user/30610578.e05f2196.200x200o.3948baec540a.jpeg",
+    "player_id": 30610578,
+    "@id": "https://api.chess.com/pub/player/1977ivan",
+    "url": "https://www.chess.com/member/1977Ivan",
+    "name": "Ivan Ivanisevic",
+    "username": "1977ivan",
+    "title": "GM",
+    "followers": 245,
+    "country": "https://api.chess.com/pub/country/RS",
+    "location": "Belgrade",
+    "last_online": 1735569484,
+    "joined": 1477565847,
+    "status": "premium",
+    "is_streamer": "False",
+    "verified": "False",
+    "league": "Crystal",
+    "streaming_platforms": []
+}

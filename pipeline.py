@@ -3,6 +3,7 @@
 # The pipeline loads data for a few famous players, their profiles, and games for the last month.
 # The pipeline uses the `chess` source function to get data for a few famous players, the `players` resource function to return players one by one, the `players_profiles` transformer function to get profiles for the players, and the `players_games` transformer function to get games for the players.
 
+from re import X
 import threading
 from typing import Any, Iterator
 
@@ -14,13 +15,24 @@ from tenacity import (
 )
 
 import dlt
-from dlt.common import sleep, logger
+import logging
+from dlt.common import sleep
 from dlt.common.typing import StrAny, TDataItems
 from dlt.sources.helpers.requests import client
 from dlt.pipeline.helpers import retry_load
 from dlt.common.runtime.slack import send_slack_message
 
+# Create a logger
+logger = logging.getLogger('dlt')
 
+# Set the log level
+logger.setLevel(logging.DEBUG)
+
+# Create a file handler
+handler = logging.FileHandler('dlt.log')
+
+# Add the handler to the logger
+logger.addHandler(handler)
 
 @dlt.source
 def chess(
@@ -100,7 +112,7 @@ def load_data_with_retry(pipeline:dlt.Pipeline, data):
     if schema_updates:
         # send notification
         print(pipeline.runtime_config.slack_incoming_hook, "Schema was updated!")
-
+        
     # To run simple tests with `sql_client`, such as checking table counts and
     # warning if there is no data, you can use the `execute_query` method
     with pipeline.sql_client() as client:
