@@ -34,7 +34,7 @@ handler = logging.FileHandler('dlt.log')
 # Add the handler to the logger
 logger.addHandler(handler)
 
-def _get_data_with_retry(path: str) -> StrAny:
+def get_data_with_retry(path: str) -> StrAny:
     chess_url = "https://api.chess.com/pub/"
     r = client.get(f"{chess_url}{path}")
     return r.json()  
@@ -53,7 +53,7 @@ def chess(
     def players() -> Iterator[TDataItems]:
         # return players one by one, you could also return a list
         # that would be faster but we want to pass players item by item to the transformer
-        yield from _get_data_with_retry(f"titled/{title}")["players"][:max_players]
+        yield from get_data_with_retry(f"titled/{title}")["players"][:max_players]
 
     # this resource takes data from players and returns profiles
     # it uses `paralellized` flag to enable parallel run in thread pool.
@@ -61,7 +61,7 @@ def chess(
     def players_profiles(username: Any) -> TDataItems:
         print(f"getting {username} profile via thread {threading.current_thread().name}")
         sleep(1)  # add some latency to show parallel runs
-        return _get_data_with_retry(f"player/{username}")
+        return get_data_with_retry(f"player/{username}")
 
     # this resource takes data from players and returns games for the last month
     # if not specified otherwise
@@ -69,7 +69,7 @@ def chess(
     def players_games(username: Any) -> Iterator[TDataItems]:
         # https://api.chess.com/pub/player/{username}/games/{YYYY}/{MM}
         path = f"player/{username}/games/{year:04d}/{month:02d}"
-        yield _get_data_with_retry(path)["games"]
+        yield get_data_with_retry(path)["games"]
 
     return players(), players_profiles, players_games
 
@@ -80,7 +80,7 @@ MAX_PLAYERS = 5
 def load_data_with_retry(pipeline:dlt.Pipeline, data):
     try:
         for attempt in Retrying(
-            stop=stop_after_attempt(5),
+            stop=stop_after_attempt(1),
             wait=wait_exponential(multiplier=1.5, min=4, max=10),
             retry=retry_if_exception(retry_load(())),
             reraise=True,

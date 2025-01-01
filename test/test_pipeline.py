@@ -49,35 +49,60 @@ def sample_data()-> Tuple[Player, Profile]:
     finally:
         return player, profile
 
-def  test_init(sample_data):
-    player, profile = sample_data
-    assert player is not None
-    assert profile is not None
 
-
-def test_pipe_run( sample_data):
+@patch("pipeline.get_data_with_retry")
+def test_pipe_run(mock_get_data, sample_data):
     player, profile = sample_data
     
-    mock_get_data = MagicMock()
     def mock_side_effect(path, *args, **kwargs):
         if path.startswith("titled"):
             return player.dict()
-        elif path.startswith("player"):
+        elif path.startswith("player") and not path.endswith("games"):
             return profile.dict()
-        elif path.contains("games"):
-            return {[]}
-        return {}  # Default case
-
+        elif "games" in path:
+            return {"games": []}
+        return {}
+        
     mock_get_data.side_effect = mock_side_effect
+
+    pipeline = dlt.pipeline(
+        pipeline_name="chess_pipeline", 
+        destination="duckdb",
+        dataset_name="chess_data"
+    )
     
-    with patch.object(chess, '_get_data_with_retry', mock_get_data):
-        pipeline = dlt.pipeline(
-            pipeline_name="chess_pipeline",
-            destination="duckdb",
-            dataset_name="chess_data",
-        )
-        data = chess(max_players=1)
-        load_data_with_retry(pipeline, data)
+    data = chess(max_players=1)
+    info = load_data_with_retry(pipeline, data)
+    
+    assert info is not None
+    assert mock_get_data.call_count >= 3  # Called for players, profiles and games
+    mock_get_data.assert_any_call("titled/GM")
 
+@patch("pipeline._get_data_with_retry")
+def test_pipe_run_error(mock_get_data, sample_data):
+    mock_get_data.side_effect = Exception("API Error")
+    
+    pipeline = dlt.pipeline(
+        pipeline_name="chess_pipeline",
+        destination="duckdb", 
+        dataset_name="chess_data"
+    )
+    
+    data = chess(max_players=1)
+    
 
-
+@patch("pipeline._get_data_with_retry") 
+def test_pipe_empty_data(mock_get_data, sample_data):
+    mock_get_data.return_value = {"players": []}
+    
+    pipeline = dlt.pipeline(
+        pipeline_name="chess_pipeline",
+        destination="duckdb",
+        dataset_name="chess_data" 
+    )
+    
+    data = chess(max_players=1)
+    info = load_data_with_retry(pipeline, data)
+    
+    assert info is not None
+    mock_get_data.assert_called_once_with("titled/GM")
