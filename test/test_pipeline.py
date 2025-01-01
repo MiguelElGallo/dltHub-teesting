@@ -1,11 +1,12 @@
+from unittest import mock
 from pipeline import chess
 from pipeline import load_data_with_retry
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Tuple
 import json
 from pytest import fixture
 import dlt 
-from unittest.mock import patch
+from unittest.mock import patch,  MagicMock
 
 MAX_PLAYERS = 5
 
@@ -31,8 +32,9 @@ class Profile(BaseModel):
 class Player(BaseModel):
     players: List[str]
 
+
 @fixture
-def sample_data():
+def sample_data()-> Tuple[Player, Profile]:
     try:
         with open("test/player.json", "r") as f:
             player_data = json.load(f)
@@ -52,25 +54,30 @@ def  test_init(sample_data):
     assert player is not None
     assert profile is not None
 
-@patch("pipeline._get_data_with_retry")
-def test_pipe_run(mocked_getdata, sample_data):
-    def mock_side_effect(*args, **kwargs):
-        path = args[1]
-        if path.startswith("player"):
-            return sample_data[0].dict()
-        elif path.startswith("profiles"):
-            return sample_data[1].dict()
-        return {}
-    mocked_getdata.side_effect = mock_side_effect
-    # Following pipeline.py we will createa a pipeline object
-    # and run it
-    pipeline = dlt.pipeline(
-    pipeline_name="chess_pipeline",
-    destination="duckdb",
-    dataset_name="chess_data",
-    )
-    data = chess(max_players=1)
-    load_data_with_retry(pipeline, data)
+
+def test_pipe_run( sample_data):
+    player, profile = sample_data
+    
+    mock_get_data = MagicMock()
+    def mock_side_effect(path, *args, **kwargs):
+        if path.startswith("titled"):
+            return player.dict()
+        elif path.startswith("player"):
+            return profile.dict()
+        elif path.contains("games"):
+            return {[]}
+        return {}  # Default case
+
+    mock_get_data.side_effect = mock_side_effect
+    
+    with patch.object(chess, '_get_data_with_retry', mock_get_data):
+        pipeline = dlt.pipeline(
+            pipeline_name="chess_pipeline",
+            destination="duckdb",
+            dataset_name="chess_data",
+        )
+        data = chess(max_players=1)
+        load_data_with_retry(pipeline, data)
 
 
 

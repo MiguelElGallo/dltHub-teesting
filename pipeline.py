@@ -42,10 +42,10 @@ def chess(
     year: int = 2022,
     month: int = 10,
 ) -> Any:
+
     def _get_data_with_retry(path: str) -> StrAny:
         r = client.get(f"{chess_url}{path}")
         return r.json()  
-
     @dlt.resource(write_disposition="replace")
     def players() -> Iterator[TDataItems]:
         # return players one by one, you could also return a list
